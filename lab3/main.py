@@ -1,17 +1,18 @@
-from machine import TouchPad, Pin, Timer, deepsleep
+from machine import TouchPad, Pin, Timer, deepsleep, RTC
 import network
+import esp32
 import ntptime
 
 led_red = Pin(12, Pin.OUT)
-led_green = Pin(27, Pin.OUT)
+led_green = Pin(21, Pin.OUT)
+led_red.value(1)
 
-switch1 = Pin(39, Pin.IN)
-switch2 = Pin(36, Pin.IN)
+switch1 = Pin(4, Pin.IN)
+switch2 = Pin(27, Pin.IN)
 
 touch1 = TouchPad(Pin(14))
 touch2 = TouchPad(Pin(15))
 touch1.config(200)
-touch2.config(200)
 
 timer_date = Timer(0)
 timer_touch = Timer(1)
@@ -33,6 +34,7 @@ print("Oh Yes! Get connected\nConnected to " + essid)
 print("MAC Address: " + macBytes)
 print("IP Address: " + str(wlan.ifconfig()[0]))
 
+rtc = RTC()
 #ntptime.time()
 
 def display_time(timer):
@@ -45,11 +47,16 @@ def read_touch(timer):
         led_green.value(1)
     else:
         led_green.value(0)
-    #print(touch_val1, touch_val2)
+        
+def wake_up(pin):
+    led_red.value(1)
     
 def set_sleep(timer):
     print("I am awake. Going to sleep for 1 minute.")
-    deepsleep(6000)
+    led_red.value(0)
+    esp32.wake_on_touch(True)
+    esp32.wake_on_ext1(pins=(switch1, switch2), level=esp32.WAKEUP_ANY_HIGH)
+    deepsleep(60000)
 
 timer_date.init(period=15000, mode=Timer.PERIODIC, callback=display_time)
 timer_touch.init(period=100, mode=Timer.PERIODIC, callback=read_touch)
