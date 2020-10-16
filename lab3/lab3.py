@@ -26,7 +26,7 @@ timer_wait = Timer(3)
 
 # Connect to WiFi network
 essid = "ThisLANisyourLAN"
-password = "spicy!avocad0"
+password = "redacted"
 
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
