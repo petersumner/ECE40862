@@ -2,6 +2,7 @@ from machine import TouchPad, Pin, Timer, deepsleep, RTC
 import network
 import esp32
 import ntptime
+import utime
 
 led_red = Pin(12, Pin.OUT)
 led_green = Pin(21, Pin.OUT)
@@ -17,6 +18,7 @@ touch1.config(200)
 timer_date = Timer(0)
 timer_touch = Timer(1)
 timer_sleep = Timer(2)
+timer_wait = Timer(3)
 
 essid = "ThisLANisyourLAN"
 password = "spicy!avocad0"
@@ -30,15 +32,30 @@ while not wlan.isconnected():
     pass
 
 macBytes = str(wlan.config('mac'))
+macString = ''
+for ch in macBytes[1:]:
+    if ch.isdigit() or (ch.isalpha() and ch != 'x'):
+        macString += str(ch)
+x = iter(macString)
+macString = ':'.join(a+b for a,b in zip(x,x))
 print("Oh Yes! Get connected\nConnected to " + essid)
-print("MAC Address: " + macBytes)
+print("MAC Address: " + macString)
 print("IP Address: " + str(wlan.ifconfig()[0]))
 
 rtc = RTC()
-#ntptime.time()
+t = ntptime.time()
+ntptime.settime()
 
 def display_time(timer):
-    print("barbara manatee")
+    date = rtc.datetime()
+    month = str(date[1])
+    day = str(date[2])
+    year = str(date[0])
+    hour = date[3] + 4
+    minute = date[4]
+    second = date[5]
+    print('\nDate: ' + month + '/' + day + '/' + year)
+    print('Time: ' + '%02d' % hour + ':' + '%02d' % minute + ':' + '%02d' % second + ' HRS')
     
 def read_touch(timer):
     touch_val1 = touch1.read()
@@ -51,6 +68,9 @@ def read_touch(timer):
 def wake_up(pin):
     led_red.value(1)
     
+def activate(timer):
+    timer_sleep.init(period=9000, mode=Timer.PERIODIC, callback=set_sleep)
+
 def set_sleep(timer):
     print("I am awake. Going to sleep for 1 minute.")
     led_red.value(0)
@@ -60,4 +80,5 @@ def set_sleep(timer):
 
 timer_date.init(period=15000, mode=Timer.PERIODIC, callback=display_time)
 timer_touch.init(period=100, mode=Timer.PERIODIC, callback=read_touch)
-timer_sleep.init(period=9000, mode=Timer.PERIODIC, callback=set_sleep)
+timer_wait.init(period=30000, mode=Timer.ONE_SHOT, callback=activate)
+
