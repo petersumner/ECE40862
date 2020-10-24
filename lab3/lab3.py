@@ -32,8 +32,9 @@ wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
 wlan.connect(essid, password)
 while not wlan.isconnected():
-    print("connecting...")
+    print("Connecting...")
     pass
+print("Connected!")
 
 # Print connection information
 macBytes = str(wlan.config('mac'))
