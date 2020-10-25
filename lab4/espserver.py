@@ -1,9 +1,8 @@
 # Global variables
-TEMP  # measure temperature sensor data
-HALL  # measure hall sensor data
-RED_LED_STATE # string, check state of red led, ON or OFF
-GREEN_LED_STATE # string, check state of red led, ON or OFF
-
+#TEMP  # measure temperature sensor data
+#HALL  # measure hall sensor data
+#RED_LED_STATE # string, check state of red led, ON or OFF
+#GREEN_LED_STATE # string, check state of red led, ON or OFF
 
 def web_page():
     """Function to build the HTML webpage which should be displayed
