@@ -2,52 +2,41 @@ from machine import Pin
 import network
 import esp32
 import esp
-try:
-    import usocket as socket
-except:
-    import socket
-    
 import gc
+try:
+  import usocket as socket
+except:
+  import socket
+
 esp.osdebug(None)
 gc.collect()
 
-# Global variables
-#TEMP  # measure temperature sensor data
-#HALL  # measure hall sensor data
-#RED_LED_STATE # string, check state of red led, ON or OFF
-#GREEN_LED_STATE # string, check state of red led, ON or OFF
-
-led_red = Pin(12, Pin.OUT)
-led_green = Pin(21, Pin.OUT)
-
-essid = "ThisLANisyourLAN"
-password = "spicy!avocad0"
+ssid = 'ThisLANisyourLAN'
+password = 'spicy!avocad0'
 
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
-wlan.connect(essid, password)
+wlan.connect(ssid, password)
 while not wlan.isconnected():
-    pass
-print("Connected!")
+  pass
+print('Connected!')
 print(wlan.ifconfig())
 
+red_led = Pin(12, Pin.OUT)
+green_led = Pin(21, Pin.OUT)
+
 def web_page():
-    """Function to build the HTML webpage which should be displayed
-    in client (web browser on PC or phone) when the client sends a request
-    the ESP32 server.
-    
-    The server should send necessary header information to the client
-    (YOU HAVE TO FIND OUT WHAT HEADER YOUR SERVER NEEDS TO SEND)
-    and then only send the HTML webpage to the client.
-    
-    Global variables:
-    TEMP, HALL, RED_LED_STATE, GREEN_LED_STAT
-    """
     temp = esp32.raw_temperature()
     hall = esp32.hall_sensor()
-    red_led_state = led_red.value()
-    green_led_state = led_green.value()
-    
+    if red_led.value() == 1:
+        red_led_state = 'ON'
+    else:
+        red_led_state = 'OFF'
+    if green_led.value() == 1:
+        green_led_state = 'ON'
+    else:
+        green_led_state = 'OFF'
+  
     html_webpage = """<!DOCTYPE HTML><html>
     <head>
     <title>ESP32 Web Server</title>
@@ -112,10 +101,12 @@ def web_page():
     </p>
     </body>
     </html>"""
+  
     return html_webpage
 
+
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(('', 443))
+s.bind(('', 80))
 s.listen(5)
 
 while True:
@@ -124,17 +115,26 @@ while True:
     request = conn.recv(1024)
     request = str(request)
     print('Content = %s' % request)
-    led_on = request.find('/?led=on')
-    led_off = request.find('/?led=off')
-    if led_on == 6:
+    red_led_on = request.find('/?red_led=on')
+    red_led_off = request.find('/?red_led=off')
+    green_led_on = request.find('/?green_led=on')
+    green_led_off = request.find('/?green_led=off')
+    if red_led_on == 6:
         print('RED ON')
-        led.value(1)
-    if led_off == 6:
+        red_led.value(1)
+    if red_led_off == 6:
         print('RED OFF')
-        led.value(0)
+        red_led.value(0)
+    if green_led_on == 6:
+        print('GREEN ON')
+        green_led.value(1)
+    if green_led_off == 6:
+        print('GREEN OFF')
+        green_led.value(0)
     response = web_page()
     conn.send('HTTP/1.1 200 OK\n')
     conn.send('Content-Type: text/html\n')
     conn.send('Connection: close\n\n')
     conn.sendall(response)
     conn.close()
+
