@@ -11,8 +11,8 @@ led_green.value(1)
 
 timer = Timer(0)
 
-essid = "ThisLANisyourLAN"
-password = "spicy!avocad0"
+essid = "The MATRIX"
+password = "Neo101100111"
 
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
@@ -20,22 +20,31 @@ wlan.connect(essid, password)
 while not wlan.isconnected():
     pass
 print("Connected!")
+print(wlan.ifconfig())
 
-api_host = 'api.thingspeak.com'
-api_port = 443
 api_key = '3ODNWZEY2LM86CTX'
-addr = socket.getaddrinfo(api_host, api_port)[0][-1]
+ai = socket.getaddrinfo('api.thingspeak.com', 80)[0][-1]
+addr = [(2, 1, 0, '', ('10.0.0.158', 80))][0][-1]
 
-def send_data(timer):
+def send_data(timer):    
+    html = """
+    POST /update HTTP/1.1
+    Host: api.thingspeak.com
+    Connection: close
+    X-THINGSPEAKAPIKEY: 3ODNWZEY2LM86CTX
+    Content-Type: application/x-www-form-urlencoded
+    Content-Length: %d
+    %s
+    """
     temp = esp32.raw_temperature()
     hall = esp32.hall_sensor()
-    print("Temperature: "+str(temp)+", Hall: "+str(hall))
-    
-    msg = b'GET https://api.thingspeak.com/update?api_key=3ODNWZEY2LM86CTX&field1='+str(temp)    
-    
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print('Temperature: '+str(temp)+', Hall: '+str(hall))
+    s = socket.socket()
     s.connect(addr)
-    s.sendall(msg)
+    s = ssl.wrap_socket(s)
+    data = 'field1=%.2f&field2=%.2f' % (temp, hall)
+    http = html & (len(data), data)
+    s.write(http.encode())
     s.close()
     
 timer.init(period=16000, mode=Timer.PERIODIC, callback=send_data)
