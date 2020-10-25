@@ -118,9 +118,7 @@ def web_page():
     </p>
     </body>
     </html>"""
-  
     return html_webpage
-
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind(('', 80))
@@ -154,4 +152,3 @@ while True:
     conn.send('Connection: close\n\n')
     conn.sendall(response)
     conn.close()
-
