@@ -1,8 +1,35 @@
+from machine import Pin
+import network
+import esp32
+import esp
+try:
+    import usocket as socket
+except:
+    import socket
+    
+import gc
+esp.osdebug(None)
+gc.collect()
+
 # Global variables
 #TEMP  # measure temperature sensor data
 #HALL  # measure hall sensor data
 #RED_LED_STATE # string, check state of red led, ON or OFF
 #GREEN_LED_STATE # string, check state of red led, ON or OFF
+
+led_red = Pin(12, Pin.OUT)
+led_green = Pin(21, Pin.OUT)
+
+essid = "ThisLANisyourLAN"
+password = "spicy!avocad0"
+
+wlan = network.WLAN(network.STA_IF)
+wlan.active(True)
+wlan.connect(essid, password)
+while not wlan.isconnected():
+    pass
+print("Connected!")
+print(wlan.ifconfig())
 
 def web_page():
     """Function to build the HTML webpage which should be displayed
@@ -16,6 +43,10 @@ def web_page():
     Global variables:
     TEMP, HALL, RED_LED_STATE, GREEN_LED_STAT
     """
+    temp = esp32.raw_temperature()
+    hall = esp32.hall_sensor()
+    red_led_state = led_red.value()
+    green_led_state = led_green.value()
     
     html_webpage = """<!DOCTYPE HTML><html>
     <head>
@@ -62,7 +93,7 @@ def web_page():
     <sup class="units">V</sup>
     </p>
     <p>
-    RED LED Current State: <strong>""" + red_led_state + """</strong>
+    RED LED Current State: <strong>""" + str(red_led_state) + """</strong>
     </p>
     <p>
     <a href="/?red_led=on"><button class="button">RED ON</button></a>
@@ -71,7 +102,7 @@ def web_page():
     <a href="/?red_led=off"><button class="button button2">RED OFF</button></a>
     </p>
     <p>
-    GREEN LED Current State: <strong>""" + green_led_state + """</strong>
+    GREEN LED Current State: <strong>""" + str(green_led_state) + """</strong>
     </p>
     <p>
     <a href="/?green_led=on"><button class="button">GREEN ON</button></a>
@@ -82,3 +113,28 @@ def web_page():
     </body>
     </html>"""
     return html_webpage
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind(('', 443))
+s.listen(5)
+
+while True:
+    conn, addr = s.accept()
+    print('Got a connection from %s' % str(addr))
+    request = conn.recv(1024)
+    request = str(request)
+    print('Content = %s' % request)
+    led_on = request.find('/?led=on')
+    led_off = request.find('/?led=off')
+    if led_on == 6:
+        print('RED ON')
+        led.value(1)
+    if led_off == 6:
+        print('RED OFF')
+        led.value(0)
+    response = web_page()
+    conn.send('HTTP/1.1 200 OK\n')
+    conn.send('Content-Type: text/html\n')
+    conn.send('Connection: close\n\n')
+    conn.sendall(response)
+    conn.close()
