@@ -25,6 +25,9 @@ print(wlan.ifconfig())
 red_led = Pin(12, Pin.OUT)
 green_led = Pin(21, Pin.OUT)
 
+switch1 = Pin(4, Pin.OUT)
+switch2 = Pin(27, Pin.OUT)
+
 def web_page():
     temp = esp32.raw_temperature()
     hall = esp32.hall_sensor()
@@ -36,6 +39,14 @@ def web_page():
         green_led_state = 'ON'
     else:
         green_led_state = 'OFF'
+    if switch1.value() == 1:
+        switch1_state = 'ON'
+    else:
+        switch1_state = 'OFF'
+    if switch2.value() == 1:
+        switch2_state = 'ON'
+    else:
+        switch2_state = 'OFF'
   
     html_webpage = """<!DOCTYPE HTML><html>
     <head>
@@ -82,7 +93,7 @@ def web_page():
     <sup class="units">V</sup>
     </p>
     <p>
-    RED LED Current State: <strong>""" + str(red_led_state) + """</strong>
+    RED LED Current State: <strong>""" + red_led_state + """</strong>
     </p>
     <p>
     <a href="/?red_led=on"><button class="button">RED ON</button></a>
@@ -91,13 +102,19 @@ def web_page():
     <a href="/?red_led=off"><button class="button button2">RED OFF</button></a>
     </p>
     <p>
-    GREEN LED Current State: <strong>""" + str(green_led_state) + """</strong>
+    GREEN LED Current State: <strong>""" + green_led_state + """</strong>
     </p>
     <p>
     <a href="/?green_led=on"><button class="button">GREEN ON</button></a>
     </p>
     <p>
     <a href="/?green_led=off"><button class="button button2">GREEN OFF</button></a>
+    </p>
+    <p>
+    SWITCH1 Current State: <strong>""" + switch1_state + """</strong>
+    </p>
+    <p>
+    SWITCH2 Current State: <strong>""" + switch2_state + """</strong>
     </p>
     </body>
     </html>"""
