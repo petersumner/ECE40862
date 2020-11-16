@@ -91,63 +91,91 @@ switch1 = Pin(21, Pin.IN)
 switch2 = Pin(32, Pin.IN)
 
 i2c = I2C(sda=Pin(22), scl=Pin(23), freq=400000)
-print(i2c.scan())
 mpu = MPU(i2c)
 
 timer1 = Timer(0)
 timer2 = Timer(1)
+timer3 = Timer(2)
 
 last_acc = mpu.acceleration()
-last_gyro = [mpu.pitch, mpu.roll, mpu.yaw]
+last_gyro = mpu.gyro()
 last_temp = mpu.temperature()
+vel = [0,0,0]
 
 duty_cycle = 512
 
+state = 0
+
 def isStill():
     if last_gyro[0]-mpu.pitch < 3 and last_gyro[1]-mpu.roll < 3 and last_gyro[2]-mpu.yaw < 3:
-        return True
+        if abs(last_acc[0]) < 2 and abs(last_acc[1]) < 2 and abs(last_acc[2] < 2):
+            return True
+        else:
+            return False
     else:
         return False
-       
-def switch1_interrupt(pin):
-    onboard_led = Pin(13, Pin.OUT)
-    onboard_led.value(1)
     
-    if(isStill()):
-        led_green.value(1)
-    else:
-        led_green.value(0)
+def run(timer):
+    global state, duty_cycle, last_temp
+    if state == 1:
+        onboard_led = Pin(13, Pin.OUT)
+        onboard_led.value(1)
         
-    last_gyro = [mpu.pitch, mpu.roll, mpu.yaw]
+        if(isStill()):
+            led_green.value(1)
+        else:
+            led_green.value(0)
+          
+        acc = mpu.acceleration()
+        for i in range(3):
+            vel[i] += acc[i] * 0.05
+            
+        if abs(vel[0]) > 3 or abs(vel[1]) > 3 or abs(vel[2]) > 3:
+            led_red.value(1)
+        else:
+            led_red.value(0)
+            
+        last_gyro = mpu.gyro()
+            
+        if abs(mpu.pitch) > 30 or abs(mpu.roll) > 30 or abs(mpu.yaw) > 30:
+            led_yellow.value(1)
+        else:
+            led_yellow.value(0)
+            
+        print("X: " + str(round(vel[0], 3))) 
+        print("Y: " + str(round(vel[1], 3)))
+        print("Z: " + str(round(vel[2], 3)))
+        print("Pitch: " + str(round(mpu.pitch, 3)))
+        print("Roll: " + str(round(mpu.roll, 3)))
+        print("Theta: " + str(round(mpu.yaw, 3)) + "\n")
         
-    if abs(mpu.pitch) > 30 or abs(mpu.roll) > 30 or abs(mpu.yaw) > 30:
-        led_yellow.value(1)
-    else:
-        led_yellow.value(0)
+    elif state == 2:
+        onboard_pwm = PWM(Pin(13))
+        onboard_pwm.duty(duty_cycle)
+        onboard_pwm.freq(10)
         
-    print("Pitch: " + str(round(mpu.pitch, 3)))
-    print("Roll: " + str(round(mpu.roll, 3)))
-    print("Theta: " + str(round(mpu.yaw, 3)) + "\n")
+        temp = mpu.temperature()
+        temp_dif = temp - last_temp
+        last_temp = temp
+        
+        duty_cycle += int(temp_dif) * 5
+        
+        print("Temperature: " + str(round(temp, 3)) + " degrees C\n")
+        
+def state1(pin):
+    global state
+    state = 1
     
-def switch2_interrupt(pin):
-    global duty_cycle, last_temp
-    onboard_pwm = PWM(Pin(13))
-    onboard_pwm.duty(duty_cycle)
-    onboard_pwm.freq(10)
-    
-    temp = mpu.temperature()
-    temp_dif = temp - last_temp
-    last_temp = temp
-    
-    duty_cycle += int(temp_dif) * 5
-    
-    print("Temperature: " + str(round(temp, 3)) + " degrees C\n")
+def state2(pin):
+    global state
+    state = 2
     
 def debounce1(pin):
-    timer1.init(mode=Timer.PERIODIC, period=400, callback=switch1_interrupt)
+    timer1.init(mode=Timer.ONE_SHOT, period=200, callback=state1)
     
 def debounce2(pin):
-    timer2.init(mode=Timer.PERIODIC, period=400, callback=switch2_interrupt)
+    timer2.init(mode=Timer.ONE_SHOT, period=200, callback=state2)
     
+timer3.init(mode=Timer.PERIODIC, period=500, callback=run)
 switch1.irq(trigger=Pin.IRQ_RISING, handler=debounce1)
 switch2.irq(trigger=Pin.IRQ_RISING, handler=debounce2)
