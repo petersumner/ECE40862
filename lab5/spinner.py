@@ -1,4 +1,4 @@
-from machine import Pin, I2C, Timer
+from machine import Pin, I2C, Timer, PWM
 import esp32
 
 class MPU:
@@ -45,7 +45,7 @@ class MPU:
         gyro_y = self.__bytes_to_int(gyro_y) / 250 * 0.1
         gyro_z = self.__bytes_to_int(gyro_z) / 250 * 0.1
         
-        return gyro_x, gyro_y, gyro_z
+        return [gyro_x, gyro_y, gyro_z]
     
     def __update_gyro(self, timer):
         gyro_val = self.__read_gyro()
@@ -72,14 +72,10 @@ class MPU:
         self.i2c.stop()
         
         temp = self.__bytes_to_int(temp)
-        return self.__celsius_to_fahrenheit(temp / 340 + 36.53)
+        return float(temp / 340 + 36.53)
     
     def gyro(self):
         return self.pitch, self.roll, self.yaw
-    
-    @staticmethod
-    def __celsius_to_fahrenheit(temp):
-        return temp*9 / 5 + 32
     
     @staticmethod
     def __bytes_to_int(data):
@@ -90,7 +86,6 @@ class MPU:
 led_red = Pin(27, Pin.OUT)
 led_green = Pin(15, Pin.OUT)
 led_yellow = Pin(14, Pin.OUT)
-onboard_led = Pin(13, Pin.OUT)
 
 switch1 = Pin(21, Pin.IN)
 switch2 = Pin(32, Pin.IN)
@@ -99,16 +94,60 @@ i2c = I2C(sda=Pin(22), scl=Pin(23), freq=400000)
 print(i2c.scan())
 mpu = MPU(i2c)
 
-print(mpu.acceleration())
-print(mpu.temperature())
-print(mpu.gyro())
+timer1 = Timer(0)
+timer2 = Timer(1)
 
+last_acc = mpu.acceleration()
+last_gyro = [mpu.pitch, mpu.roll, mpu.yaw]
+last_temp = mpu.temperature()
+
+duty_cycle = 512
+
+def isStill():
+    if last_gyro[0]-mpu.pitch < 3 and last_gyro[1]-mpu.roll < 3 and last_gyro[2]-mpu.yaw < 3:
+        return True
+    else:
+        return False
        
 def switch1_interrupt(pin):
+    onboard_led = Pin(13, Pin.OUT)
     onboard_led.value(1)
     
-def switch2_interrupt(pin):
-    onboard_led.value(0)
+    if(isStill()):
+        led_green.value(1)
+    else:
+        led_green.value(0)
+        
+    last_gyro = [mpu.pitch, mpu.roll, mpu.yaw]
+        
+    if abs(mpu.pitch) > 30 or abs(mpu.roll) > 30 or abs(mpu.yaw) > 30:
+        led_yellow.value(1)
+    else:
+        led_yellow.value(0)
+        
+    print("Pitch: " + str(round(mpu.pitch, 3)))
+    print("Roll: " + str(round(mpu.roll, 3)))
+    print("Theta: " + str(round(mpu.yaw, 3)) + "\n")
     
-switch1.irq(trigger=Pin.IRQ_RISING, handler=switch1_interrupt)
-switch2.irq(trigger=Pin.IRQ_RISING, handler=switch2_interrupt)
+def switch2_interrupt(pin):
+    global duty_cycle, last_temp
+    onboard_pwm = PWM(Pin(13))
+    onboard_pwm.duty(duty_cycle)
+    onboard_pwm.freq(10)
+    
+    temp = mpu.temperature()
+    temp_dif = temp - last_temp
+    last_temp = temp
+    
+    duty_cycle += int(temp_dif) * 5
+    
+    print("Temperature: " + str(round(temp, 3)) + " degrees C\n")
+    
+def debounce1(pin):
+    timer1.init(mode=Timer.PERIODIC, period=400, callback=switch1_interrupt)
+    
+def debounce2(pin):
+    timer2.init(mode=Timer.PERIODIC, period=400, callback=switch2_interrupt)
+    
+switch1.irq(trigger=Pin.IRQ_RISING, handler=debounce1)
+switch2.irq(trigger=Pin.IRQ_RISING, handler=debounce2)
