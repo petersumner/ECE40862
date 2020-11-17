@@ -20,19 +20,19 @@ class MPU:
         
         self.pitch = 0
         self.roll = 0
-        self.yaw = 0
+        self.theta = 0
         self.pitch_offset = 0
         self.roll_offset = 0
-        self.yaw_offset = 0
+        self.theta_offset = 0
         self.__init_gyro()
         gyro_timer = Timer(3)
         gyro_timer.init(mode=Timer.PERIODIC, callback=self.__update_gyro, period=100)
 
-    def __init_gyro(self):
+    def __init_gyro(self):       
         gyro_offsets = self.__read_gyro()
         self.roll_offset = gyro_offsets[0]
         self.pitch_offset = gyro_offsets[1]
-        self.yaw_offset = gyro_offsets[2]
+        self.theta_offset = gyro_offsets[2]
     
     def __read_gyro(self):
         self.i2c.start()
@@ -41,9 +41,9 @@ class MPU:
         gyro_z = self.i2c.readfrom_mem(self.addr, MPU.GYRO_Z, 2)
         self.i2c.stop()
         
-        gyro_x = self.__bytes_to_int(gyro_x) / 250 * 0.1
-        gyro_y = self.__bytes_to_int(gyro_y) / 250 * 0.1
-        gyro_z = self.__bytes_to_int(gyro_z) / 250 * 0.1
+        gyro_x = self.__bytes_to_int(gyro_x) / 2500
+        gyro_y = self.__bytes_to_int(gyro_y) / 2500
+        gyro_z = self.__bytes_to_int(gyro_z) / 2500
         
         return [gyro_x, gyro_y, gyro_z]
     
@@ -51,7 +51,7 @@ class MPU:
         gyro_val = self.__read_gyro()
         self.roll += gyro_val[0] - self.roll_offset
         self.pitch += gyro_val[1] - self.pitch_offset
-        self.yaw += gyro_val[2] - self.yaw_offset
+        self.theta += gyro_val[2] - self.theta_offset
 
     def acceleration(self):
         self.i2c.start()
@@ -75,7 +75,7 @@ class MPU:
         return float(temp / 340 + 36.53)
     
     def gyro(self):
-        return self.pitch, self.roll, self.yaw
+        return self.pitch, self.roll, self.theta
     
     @staticmethod
     def __bytes_to_int(data):
@@ -99,16 +99,14 @@ timer3 = Timer(2)
 
 last_acc = mpu.acceleration()
 last_gyro = mpu.gyro()
-last_temp = mpu.temperature()
+init_temp = mpu.temperature()
 vel = [0,0,0]
-
-duty_cycle = 512
 
 state = 0
 
 def isStill():
-    if last_gyro[0]-mpu.pitch < 3 and last_gyro[1]-mpu.roll < 3 and last_gyro[2]-mpu.yaw < 3:
-        if abs(last_acc[0]) < 2 and abs(last_acc[1]) < 2 and abs(last_acc[2] < 2):
+    if last_gyro[0]-mpu.pitch < 3 and last_gyro[1]-mpu.roll < 3 and last_gyro[2]-mpu.theta < 3:
+        if abs(last_acc[0]) < 1 and abs(last_acc[1]) < 1 and abs(last_acc[2] < 1):
             return True
         else:
             return False
@@ -116,7 +114,7 @@ def isStill():
         return False
     
 def run(timer):
-    global state, duty_cycle, last_temp
+    global state, init_temp
     if state == 1:
         onboard_led = Pin(13, Pin.OUT)
         onboard_led.value(1)
@@ -137,7 +135,7 @@ def run(timer):
             
         last_gyro = mpu.gyro()
             
-        if abs(mpu.pitch) > 30 or abs(mpu.roll) > 30 or abs(mpu.yaw) > 30:
+        if abs(mpu.pitch) > 30 or abs(mpu.roll) > 30 or abs(mpu.theta) > 30:
             led_yellow.value(1)
         else:
             led_yellow.value(0)
@@ -147,18 +145,16 @@ def run(timer):
         print("Z: " + str(round(vel[2], 3)))
         print("Pitch: " + str(round(mpu.pitch, 3)))
         print("Roll: " + str(round(mpu.roll, 3)))
-        print("Theta: " + str(round(mpu.yaw, 3)) + "\n")
+        print("Theta: " + str(round(mpu.theta, 3)) + "\n")
         
     elif state == 2:
         onboard_pwm = PWM(Pin(13))
-        onboard_pwm.duty(duty_cycle)
-        onboard_pwm.freq(10)
+        onboard_pwm.duty(512)
         
         temp = mpu.temperature()
-        temp_dif = temp - last_temp
-        last_temp = temp
-        
-        duty_cycle += int(temp_dif) * 5
+        temp_dif = init_temp - temp
+                
+        onboard_pwm.freq(10 + int(temp_dif)*5)
         
         print("Temperature: " + str(round(temp, 3)) + " degrees C\n")
         
