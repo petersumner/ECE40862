@@ -4,16 +4,18 @@ import esp32
 import socket
 import ssl
 
+# Initialize Red and Green LEDS on GPIO Output
 led_red = Pin(12, Pin.OUT)
 led_green = Pin(21, Pin.OUT)
 led_red.value(1)
 led_green.value(1)
 
+
 timer = Timer(0)
 
+# Connect to WiFi network
 essid = "The MATRIX"
-password = "Neo101100111"
-
+password = "redacted"
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
 wlan.connect(essid, password)
@@ -22,10 +24,12 @@ while not wlan.isconnected():
 print("Connected!")
 print(wlan.ifconfig())
 
+# Connect to ThingSpeak
 api_key = '3ODNWZEY2LM86CTX'
 ai = socket.getaddrinfo('api.thingspeak.com', 80)[0][-1]
 addr = [(2, 1, 0, '', ('10.0.0.158', 80))][0][-1]
 
+#Send data via API key
 def send_data(timer):    
     html = """
     POST /update HTTP/1.1
@@ -46,5 +50,5 @@ def send_data(timer):
     http = html & (len(data), data)
     s.write(http.encode())
     s.close()
-    
+
 timer.init(period=16000, mode=Timer.PERIODIC, callback=send_data)

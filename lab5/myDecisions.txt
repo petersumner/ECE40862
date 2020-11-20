@@ -1,0 +1,23 @@
+Pressing each button triggers an interrupt that sets the state of the code. A separate timer is 
+initialized to perform the actions for each state with a period of 500ms. 
+
+Velocity was calculated using the equation: dv = a * dt. The time between each measurement is the 
+period of the timer (500ms), which is multiplied by the current acceleration to obtain change in 
+velocity over the period. Starting from 0, velocity is updated each period by adding or subtracting
+dt depending on the sign of acceleration.
+
+To check if the spinner is in motion, I used an array to store gyro values form the most recent
+measurement. Then I found the difference between these and the current gyro value. If the absolute 
+value of all three axes is within three degrees of the previous measurement, that is considered to 
+be motionless. I chose this threshold because when the board was completely still, the rotational 
+values would fluxuate by up to about two degrees. Three ensures that when the board is not rotating, 
+the green LED is not accidentally toggled off. 
+
+To check if the board is moving, the current acceleration is compared to 1. If the absolute value of
+all three acceleration values is less than 1, then the board is considered to be motionless. I chose 
+this value becuase at rest, accleration would fluxuate but mostly remain close to zero.
+
+For the sensors state, the on board LED is initialized as an PWM GPIO output with duty cycle of 512. 
+The initial temperature is taken during the initialization state and for each period, the difference 
+between this value and the current temperature is calculated. The frequency of the onboard led is 
+set to to 10 plus five times the difference.
