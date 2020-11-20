@@ -11,9 +11,9 @@ except:
 esp.osdebug(None)
 gc.collect()
 
+# Connect to WiFi network
 ssid = 'ThisLANisyourLAN'
-password = 'spicy!avocad0'
-
+password = 'redacted'
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
 wlan.connect(ssid, password)
@@ -22,12 +22,15 @@ while not wlan.isconnected():
 print('Connected!')
 print(wlan.ifconfig())
 
+# Initialize Red and Green LEDs as GPIO Outputs
 red_led = Pin(12, Pin.OUT)
 green_led = Pin(21, Pin.OUT)
 
+# Initialize two external GPIO switches
 switch1 = Pin(4, Pin.OUT)
 switch2 = Pin(27, Pin.OUT)
 
+# Webpage code
 def web_page():
     temp = esp32.raw_temperature()
     hall = esp32.hall_sensor()
